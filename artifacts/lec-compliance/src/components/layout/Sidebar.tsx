@@ -6,7 +6,8 @@ import {
   Files, 
   Bell, 
   Settings,
-  ShieldCheck
+  ShieldCheck,
+  CalendarCheck
 } from "lucide-react";
 import { useStore } from "@/store/useStore";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,7 @@ const NAV_ITEMS = [
   { href: "/documentos", label: "Documentos", icon: FileText },
   { href: "/requisitos-lec", label: "Requisitos LEC", icon: CheckSquare },
   { href: "/evidencias", label: "Evidencias", icon: Files },
+  { href: "/auditorias", label: "Auditorías", icon: CalendarCheck },
   { href: "/alertas", label: "Alertas", icon: Bell },
   { href: "/configuracion", label: "Configuración", icon: Settings },
 ];

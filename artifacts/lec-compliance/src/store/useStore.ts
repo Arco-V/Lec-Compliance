@@ -57,6 +57,35 @@ export interface FacturaE {
   fecha: Date;
 }
 
+export type AuditoriaTipo = 'Interna' | 'Externa' | 'Seguimiento';
+export type AuditoriaEstado = 'Programada' | 'En curso' | 'Completada';
+
+export interface ChecklistItem {
+  id: string;
+  clausula: string;
+  descripcion: string;
+  cubierto: boolean;
+}
+
+export interface Hallazgo {
+  id: string;
+  severidad: 'Mayor' | 'Menor' | 'Observación';
+  descripcion: string;
+}
+
+export interface Auditoria {
+  id: string;
+  titulo: string;
+  fecha: Date;
+  tipo: AuditoriaTipo;
+  alcance: string[];
+  responsable: string;
+  estado: AuditoriaEstado;
+  checklist: ChecklistItem[];
+  hallazgos: Hallazgo[];
+  notas: string;
+}
+
 export interface Empresa {
   nombre: string;
   cuit: string;
@@ -76,7 +105,13 @@ interface LecState {
   preferencias: Preferencias;
   actividades: Actividad[];
   facturas: FacturaE[];
+  auditorias: Auditoria[];
   setEmpresa: (empresa: Partial<Empresa>) => void;
+  addAuditoria: (a: Omit<Auditoria, 'id' | 'checklist' | 'hallazgos' | 'estado' | 'notas'> & { checklist?: ChecklistItem[]; estado?: AuditoriaEstado; notas?: string }) => void;
+  updateAuditoria: (id: string, data: Partial<Auditoria>) => void;
+  deleteAuditoria: (id: string) => void;
+  toggleChecklistItem: (auditoriaId: string, itemId: string) => void;
+  addHallazgo: (auditoriaId: string, h: Omit<Hallazgo, 'id'>) => void;
   addDocumento: (doc: Omit<Documento, 'id'>) => void;
   updateDocumento: (id: string, doc: Partial<Documento>) => void;
   deleteDocumento: (id: string) => void;
@@ -135,6 +170,83 @@ const mockDocumentos: Documento[] = [
   }
 ];
 
+const ISO_CLAUSE_TITLES: Record<string, string> = {
+  '4': 'Contexto de la organización',
+  '5': 'Liderazgo',
+  '6': 'Planificación',
+  '7': 'Apoyo',
+  '8': 'Operación',
+  '9': 'Evaluación del desempeño',
+  '10': 'Mejora',
+};
+
+const ISO_EVIDENCE_BY_CLAUSE: Record<string, string[]> = {
+  '4': ['Análisis de contexto interno y externo', 'Mapeo de partes interesadas', 'Alcance del SGC documentado'],
+  '5': ['Política de Calidad firmada y vigente', 'Roles y responsabilidades asignados', 'Acta de revisión por la dirección'],
+  '6': ['Matriz de riesgos y oportunidades', 'Objetivos de calidad medibles', 'Plan de acción de objetivos'],
+  '7': ['Plan de capacitación del personal', 'Registros de competencias', 'Listado de equipos calibrados'],
+  '8': ['Procedimientos operativos vigentes', 'Registros de control de proveedores', 'Trazabilidad de productos/servicios'],
+  '9': ['Indicadores de desempeño actualizados', 'Encuestas de satisfacción de cliente', 'Programa de auditorías internas'],
+  '10': ['Registro de acciones correctivas', 'Análisis de causa raíz', 'Plan de mejora continua'],
+};
+
+export function generateChecklistForClauses(clauses: string[]): ChecklistItem[] {
+  const items: ChecklistItem[] = [];
+  clauses.forEach((c) => {
+    const evidencias = ISO_EVIDENCE_BY_CLAUSE[c] ?? [];
+    evidencias.forEach((descripcion, idx) => {
+      items.push({
+        id: `${c}-${idx}-${Math.random().toString(36).slice(2, 7)}`,
+        clausula: `${c}. ${ISO_CLAUSE_TITLES[c] ?? ''}`.trim(),
+        descripcion,
+        cubierto: false,
+      });
+    });
+  });
+  return items;
+}
+
+const mockAuditorias: Auditoria[] = [
+  {
+    id: 'a1',
+    titulo: 'Auditoría interna Q2 — Procesos operativos',
+    fecha: addDays(today, 12),
+    tipo: 'Interna',
+    alcance: ['7', '8', '9'],
+    responsable: 'María Fernández',
+    estado: 'Programada',
+    checklist: generateChecklistForClauses(['7', '8', '9']),
+    hallazgos: [],
+    notas: 'Foco en trazabilidad y control de proveedores.',
+  },
+  {
+    id: 'a2',
+    titulo: 'Auditoría externa de recertificación ISO 9001',
+    fecha: addDays(today, 47),
+    tipo: 'Externa',
+    alcance: ['4', '5', '6', '7', '8', '9', '10'],
+    responsable: 'Lucía Romero',
+    estado: 'Programada',
+    checklist: generateChecklistForClauses(['4', '5', '6', '7', '8', '9', '10']),
+    hallazgos: [],
+    notas: 'Auditoría de IRAM. Preparar paquete de evidencias.',
+  },
+  {
+    id: 'a3',
+    titulo: 'Seguimiento de hallazgos Q1',
+    fecha: subDays(today, 18),
+    tipo: 'Seguimiento',
+    alcance: ['10'],
+    responsable: 'Juan García',
+    estado: 'Completada',
+    checklist: generateChecklistForClauses(['10']).map((c) => ({ ...c, cubierto: true })),
+    hallazgos: [
+      { id: 'h1', severidad: 'Menor', descripcion: 'Falta evidencia de cierre en 2 acciones correctivas.' },
+    ],
+    notas: 'Cerrado con plan de acción al 30/03.',
+  },
+];
+
 const mockAlertas: Alerta[] = [
   { id: '1', tipo: 'CRITICO', descripcion: 'Registro de Capacitaciones vencido', afectado: 'Registro de Capacitaciones 2024', fecha: subDays(today, 35), leida: false },
   { id: '2', tipo: 'ADVERTENCIA', descripcion: 'Manual de Procesos próximo a vencer', afectado: 'Manual de Procesos', fecha: subDays(today, 2), leida: false },
@@ -162,6 +274,43 @@ export const useStore = create<LecState>()(
       preferencias: { diasAvisoVencimiento: 30 },
       actividades: [],
       facturas: [],
+      auditorias: mockAuditorias,
+
+      addAuditoria: (a) => set((state) => ({
+        auditorias: [
+          ...state.auditorias,
+          {
+            ...a,
+            id: Math.random().toString(36).slice(2, 11),
+            estado: a.estado ?? 'Programada',
+            checklist: a.checklist ?? generateChecklistForClauses(a.alcance),
+            hallazgos: [],
+            notas: a.notas ?? '',
+          },
+        ],
+      })),
+
+      updateAuditoria: (id, data) => set((state) => ({
+        auditorias: state.auditorias.map((a) => a.id === id ? { ...a, ...data } : a),
+      })),
+
+      deleteAuditoria: (id) => set((state) => ({
+        auditorias: state.auditorias.filter((a) => a.id !== id),
+      })),
+
+      toggleChecklistItem: (auditoriaId, itemId) => set((state) => ({
+        auditorias: state.auditorias.map((a) => a.id !== auditoriaId ? a : {
+          ...a,
+          checklist: a.checklist.map((c) => c.id === itemId ? { ...c, cubierto: !c.cubierto } : c),
+        }),
+      })),
+
+      addHallazgo: (auditoriaId, h) => set((state) => ({
+        auditorias: state.auditorias.map((a) => a.id !== auditoriaId ? a : {
+          ...a,
+          hallazgos: [...a.hallazgos, { ...h, id: Math.random().toString(36).slice(2, 9) }],
+        }),
+      })),
 
       setEmpresa: (empresaData) => set((state) => ({ empresa: { ...state.empresa, ...empresaData } })),
       

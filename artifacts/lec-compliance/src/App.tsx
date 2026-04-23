@@ -9,6 +9,7 @@ import Dashboard from "@/pages/Dashboard";
 import Documentos from "@/pages/Documentos";
 import RequisitosLec from "@/pages/RequisitosLec";
 import Evidencias from "@/pages/Evidencias";
+import Auditorias from "@/pages/Auditorias";
 import Alertas from "@/pages/Alertas";
 import Configuracion from "@/pages/Configuracion";
 
@@ -22,6 +23,7 @@ function Router() {
         <Route path="/documentos" component={Documentos} />
         <Route path="/requisitos-lec" component={RequisitosLec} />
         <Route path="/evidencias" component={Evidencias} />
+        <Route path="/auditorias" component={Auditorias} />
         <Route path="/alertas" component={Alertas} />
         <Route path="/configuracion" component={Configuracion} />
         <Route component={NotFound} />
