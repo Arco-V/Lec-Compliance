@@ -130,7 +130,7 @@ const today = new Date();
 const mockDocumentos: Documento[] = [
   {
     id: '1',
-    nombre: 'Política de Calidad',
+    nombre: 'Políticas/Política de Calidad',
     categoria: 'ISO 9001',
     clausulasIso: ['5.1', '5.2'],
     version: 'v2.1',
@@ -143,7 +143,7 @@ const mockDocumentos: Documento[] = [
   },
   {
     id: '2',
-    nombre: 'Manual de Procesos',
+    nombre: 'Manuales/Manual de Procesos',
     categoria: 'ISO 9001',
     clausulasIso: ['4.4', '8.1'],
     version: 'v3.0',
@@ -156,7 +156,7 @@ const mockDocumentos: Documento[] = [
   },
   {
     id: '3',
-    nombre: 'Registro de Capacitaciones 2024',
+    nombre: 'Capacitaciones/Registro de Capacitaciones 2024',
     categoria: 'LEC',
     clausulasIso: ['7.2'],
     requisitoLec: 'Capacitación',
@@ -165,6 +165,125 @@ const mockDocumentos: Documento[] = [
     proximaRevision: subDays(today, 35),
     estado: 'vencido',
     responsable: 'Lucía Romero',
+    frecuencia: '12 meses',
+    historial: []
+  },
+  {
+    id: '4',
+    nombre: 'Políticas/Política de Seguridad de la Información',
+    categoria: 'ISO 9001',
+    clausulasIso: ['5.1'],
+    version: 'v1.2',
+    ultimaRevision: subDays(today, 90),
+    proximaRevision: addDays(today, 275),
+    estado: 'vigente',
+    responsable: 'Juan García',
+    frecuencia: '12 meses',
+    historial: []
+  },
+  {
+    id: '5',
+    nombre: 'Manuales/Manual del SGC',
+    categoria: 'ISO 9001',
+    clausulasIso: ['4.3', '4.4'],
+    version: 'v2.0',
+    ultimaRevision: subDays(today, 150),
+    proximaRevision: addDays(today, 215),
+    estado: 'vigente',
+    responsable: 'María Fernández',
+    frecuencia: '12 meses',
+    historial: []
+  },
+  {
+    id: '6',
+    nombre: 'Evaluaciones de desempeño/Evaluación de desempeño - García A.',
+    categoria: 'Interno',
+    clausulasIso: ['7.2'],
+    version: 'v1.0',
+    ultimaRevision: subDays(today, 60),
+    proximaRevision: addDays(today, 305),
+    estado: 'vigente',
+    responsable: 'Lucía Romero',
+    frecuencia: '12 meses',
+    historial: []
+  },
+  {
+    id: '7',
+    nombre: 'Evaluaciones de desempeño/Evaluación de desempeño - Pérez M.',
+    categoria: 'Interno',
+    clausulasIso: ['7.2'],
+    version: 'v1.0',
+    ultimaRevision: subDays(today, 380),
+    proximaRevision: subDays(today, 15),
+    estado: 'vencido',
+    responsable: 'Lucía Romero',
+    frecuencia: '12 meses',
+    historial: []
+  },
+  {
+    id: '8',
+    nombre: 'Evaluaciones de desempeño/Evaluación de desempeño - López R.',
+    categoria: 'Interno',
+    clausulasIso: ['7.2'],
+    version: 'v1.0',
+    ultimaRevision: subDays(today, 300),
+    proximaRevision: addDays(today, 65),
+    estado: 'vigente',
+    responsable: 'Lucía Romero',
+    frecuencia: '12 meses',
+    historial: []
+  },
+  {
+    id: '9',
+    nombre: 'Capacitaciones/Plan de Capacitación 2026',
+    categoria: 'LEC',
+    clausulasIso: ['7.2'],
+    requisitoLec: 'Capacitación',
+    version: 'v1.0',
+    ultimaRevision: subDays(today, 30),
+    proximaRevision: addDays(today, 335),
+    estado: 'vigente',
+    responsable: 'Lucía Romero',
+    frecuencia: '12 meses',
+    historial: []
+  },
+  {
+    id: '10',
+    nombre: 'Procedimientos/Control de documentos',
+    categoria: 'ISO 9001',
+    clausulasIso: ['7.5'],
+    version: 'v1.4',
+    ultimaRevision: subDays(today, 120),
+    proximaRevision: addDays(today, 245),
+    estado: 'vigente',
+    responsable: 'María Fernández',
+    frecuencia: '12 meses',
+    historial: []
+  },
+  {
+    id: '11',
+    nombre: 'Procedimientos/Acciones correctivas',
+    categoria: 'ISO 9001',
+    clausulasIso: ['10.2'],
+    version: 'v1.1',
+    ultimaRevision: subDays(today, 350),
+    proximaRevision: addDays(today, 15),
+    estado: 'por_vencer',
+    responsable: 'Juan García',
+    frecuencia: '12 meses',
+    historial: []
+  },
+  {
+    id: '12',
+    nombre: 'Exportaciones/Registro de operaciones de exportación',
+    categoria: 'LEC',
+    clausulasIso: [],
+    requisitoLec: 'Exportaciones',
+    version: 'v1.0',
+    ultimaRevision: subDays(today, 45),
+    proximaRevision: addDays(today, 320),
+    estado: 'vigente',
+    responsable: 'Juan García',
     frecuencia: '12 meses',
     historial: []
   }
@@ -363,7 +482,7 @@ export const useStore = create<LecState>()(
     }),
     {
       name: 'lec-compliance-storage',
-      // partial serialize to handle dates properly if needed, but keeping it simple for prototype
+      version: 2,
     }
   )
 );
