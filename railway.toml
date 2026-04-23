@@ -1,0 +1,11 @@
+[build]
+buildCommand = "pnpm install --frozen-lockfile && pnpm run build:prod"
+
+[deploy]
+startCommand = "pnpm run start"
+healthcheckPath = "/api/healthz"
+healthcheckTimeout = 30
+
+[environments.production.variables]
+NODE_ENV = "production"
+BASE_PATH = "/"
