@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "LEC Compliance"
+version = "1.0.0"
+id = "artifacts/lec-compliance"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21622
+
+[services.development]
+run = "pnpm --filter @workspace/lec-compliance run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/lec-compliance", "run", "build" ]
+publicDir = "artifacts/lec-compliance/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21622"
+BASE_PATH = "/"

@@ -1,0 +1,181 @@
+Build a SaaS web application called "LEC Compliance" — a document management and compliance tracking platform for Argentine SMEs (PyMEs) enrolled in the Ley de Economía del Conocimiento (LEC), specifically focused on ISO 9001 continuous improvement requirements.
+
+## Core Purpose
+Help companies manage their regulatory documentation, track compliance status, and generate audit-ready evidence packages — so they never lose their fiscal benefits due to paperwork disorganization.
+
+## Tech Stack
+- React + TypeScript
+- Tailwind CSS
+- Shadcn/ui components
+- React Router for navigation
+- Zustand for state management
+- No backend needed for prototype — use localStorage + mock data
+
+## Design Direction
+Professional, trustworthy, data-dense. Think Notion meets a compliance dashboard. Dark sidebar, clean white content area. Use a blue/slate color palette with green accents for compliance status. Typography: use a clean sans-serif for body, slightly heavier weight for headers. No purple gradients, no generic startup aesthetics.
+
+## Application Structure
+
+### Sidebar Navigation
+- Dashboard (home)
+- Documentos
+- Requisitos LEC
+- Evidencias (Auditoría)
+- Alertas
+- Configuración
+
+---
+
+### 1. DASHBOARD (/)
+Show a compliance health overview:
+
+**Top KPI Cards (4 cards):**
+- Documentos Vigentes: e.g. "34/41 documentos" with green/yellow/red status
+- Estado LEC: "Requisitos cumplidos: 2/3 ✓" with a badge
+- Próximo Vencimiento: "ISO 9001 — 23 días"
+- Beneficio Fiscal en Riesgo: "$30.000.000 ARS" with a warning icon if compliance drops below threshold
+
+**Compliance Progress Section:**
+- ISO 9001 progress bar with % of clauses covered by evidence
+- LEC Requisitos Adicionales: show the 3 options (Calidad, I+D/Capacitación, Exportaciones) as cards, each showing met/not met
+
+**Recent Activity Feed:**
+- Last document updated, last alert triggered, last audit package generated
+
+---
+
+### 2. DOCUMENTOS (/documentos)
+
+A document registry table with these columns:
+- Nombre del documento
+- Categoría (ISO 9001 Cláusula / LEC Requisito / Interno)
+- Versión (e.g. v2.1)
+- Última revisión (date)
+- Próxima revisión (date — auto-calculated as +12 months from last review)
+- Estado badge: Vigente (green) / Por vencer en 30 días (yellow) / Vencido (red)
+- Responsable (person name)
+- Acciones: Ver, Editar, Subir nueva versión
+
+**Add Document button** → opens a modal/drawer with fields:
+- Nombre
+- Categoría (dropdown)
+- Cláusula ISO relacionada (multi-select: 4.1, 4.2, 5.1, 6.1, 7.1, 7.2, 7.4, 7.5, 8.1, 9.1, 10.1, etc.)
+- Requisito LEC relacionado (dropdown: Calidad, I+D, Capacitación, Exportaciones)
+- Responsable
+- Fecha de revisión
+- Frecuencia de revisión (6 meses / 12 meses / 24 meses / Manual)
+- Upload area for the file
+
+**Document detail view** (slide-over panel):
+- Full metadata
+- Version history log: "v2.0 → v2.1 — 14/04/2025 — Juan García — Cambio: Se actualizó sección 3.2 de política de calidad"
+- Linked clauses and LEC requirements
+- Status timeline
+
+---
+
+### 3. REQUISITOS LEC (/requisitos-lec)
+
+Show the 3 additional requirements with tracking:
+
+**Card 1: Calidad / ISO 9001**
+- Certification name, certifying body, expiry date
+- Evidence documents linked
+- Status: Certificado vigente / En proceso / Vencido
+- Progress of ISO 9001 clause coverage (show 12 main clauses with checkboxes for evidence)
+
+**Card 2: I+D y Capacitación**
+- Toggle between I+D and Capacitación tabs
+- For Capacitación: show masa salarial input, % invertido, required %, status
+- For I+D: show facturación total input, % invertido, required %, status
+- List of training/R&D activities with: nombre, fecha, monto, proveedor, certificado adjunto
+
+**Card 3: Exportaciones**
+- Total facturación input
+- Exportaciones monto input
+- % calculated automatically
+- Required % shown (4% micro, 10% small/medium, 13% large)
+- Status badge
+- List of export invoices (Factura E) with client name, amount, date
+
+Below the cards:
+"Cumplís X de 3 requisitos. Necesitás al menos 2 para mantener tu inscripción."
+
+---
+
+### 4. EVIDENCIAS - AUDITORÍA (/evidencias)
+
+This is the killer feature.
+
+**Two tabs:**
+
+**Tab 1: Por Cláusula ISO 9001**
+Accordion list of ISO 9001 clauses (show the main 10 high-level clauses):
+- 4. Contexto de la organización
+- 5. Liderazgo
+- 6. Planificación
+- 7. Apoyo
+- 8. Operación
+- 9. Evaluación del desempeño
+- 10. Mejora
+Each clause expands to show: required evidence items with checkboxes, linked documents, and a "pendiente" / "cubierto" status.
+
+**Tab 2: Por Requisito LEC**
+Same concept but organized by LEC requirement (Calidad, Nómina, Masa Salarial, Capacitación, etc.)
+
+**"Generar Paquete de Auditoría" button (prominent, top right):**
+Opens a modal:
+- Select scope: ISO 9001 / LEC / Ambos
+- Select period
+- Preview of what will be included (list of documents)
+- "Generar ZIP" button → shows success state with download confirmation
+- Also option: "Generar Reporte PDF resumen"
+
+---
+
+### 5. ALERTAS (/alertas)
+
+Timeline/feed of alerts sorted by urgency:
+
+Alert types with icons:
+🔴 CRÍTICO — Documento vencido: "Política de Calidad — venció hace 3 días"
+🟡 ADVERTENCIA — Por vencer: "Manual de Procesos — vence en 15 días"  
+🔵 INFO — Recordatorio: "Revalidación LEC bienal — 8 meses"
+🟢 OK — Resuelto: "Certificado ISO 9001 actualizado"
+
+Each alert has: description, affected document/requirement, recommended action button, dismiss option.
+
+**Filter bar:** All / Críticos / Próximos 30 días / LEC / ISO 9001
+
+**Settings panel** (gear icon): configure notification preferences, days in advance for warnings (default: 30, 15, 7 days before expiry)
+
+---
+
+### 6. CONFIGURACIÓN (/configuracion)
+
+**Empresa tab:**
+- Nombre, CUIT, tamaño (Micro/Pequeña/Mediana — affects thresholds shown in LEC module)
+- Fecha de inscripción LEC
+- Próxima revalidación (auto-calculated as inscription date + 2 years)
+- Certificadora ISO (name, contact)
+
+**Usuarios tab:**
+- List of team members with roles: Admin / Editor / Viewer
+- Invite by email
+
+---
+
+## Mock Data to Include
+Pre-populate with realistic Argentine tech SME data:
+- Company: "TechSoft SRL" — 38 employees, inscribed in LEC since March 2023
+- 12 sample documents across different clauses and states (some vigent, 2 expiring soon, 1 expired)
+- Capacitación investment: $180,000 of $200,000 required (90% progress)
+- ISO 9001 clause coverage: 8/10 clauses with evidence
+- 3 active alerts
+
+## Key UX Details
+- Every document expiry date should show relative time: "Vence en 23 días" not just the date
+- Compliance percentages should use color coding consistently: >80% green, 60-80% yellow, <60% red
+- The sidebar should show a small global compliance score badge (e.g. "87%") that updates as data changes
+- Empty states should be helpful: explain what to add and why it matters for LEC compliance
+- Use Argentine Spanish throughout (not Spain Spanish): "vos", "PyME", "facturación", etc.
