@@ -15,6 +15,9 @@ import {
   Folder,
   FolderOpen,
   ChevronRight,
+  FilePlus2,
+  Download,
+  Star,
 } from "lucide-react";
 import { formatDate } from "@/lib/dates";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +49,17 @@ import {
 } from "@/components/ui/select";
 import { addDays } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import {
+  bumpVersion,
+  downloadArchivo,
+  getInitialDatos,
+  getPlantillaForDoc,
+  renderArchivo,
+  type CampoTemplate,
+  type PlantillaDoc,
+} from "@/lib/templates";
 
 const SIN_CARPETA = "Sin carpeta";
 
@@ -65,11 +79,12 @@ function progressColor(pct: number) {
 }
 
 export default function Documentos() {
-  const { documentos, addDocumento } = useStore();
+  const { documentos, addDocumento, updateDocumento } = useStore();
   const [search, setSearch] = useState("");
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<Documento | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [updateDoc, setUpdateDoc] = useState<Documento | null>(null);
 
   // Add form state
   const [carpeta, setCarpeta] = useState("");
@@ -388,22 +403,33 @@ export default function Documentos() {
                               {doc.responsable}
                             </td>
                             <td className="px-4 py-3 text-right">
-                              <Sheet>
-                                <SheetTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setSelectedDoc(doc)}
-                                  >
-                                    <Eye className="w-4 h-4 mr-1" /> Ver
-                                  </Button>
-                                </SheetTrigger>
-                                <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
-                                  {selectedDoc && selectedDoc.id === doc.id && (
-                                    <DocumentoDetail doc={selectedDoc} />
-                                  )}
-                                </SheetContent>
-                              </Sheet>
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setUpdateDoc(doc)}
+                                  title="Actualizar con plantilla"
+                                >
+                                  <FilePlus2 className="w-4 h-4 mr-1" />
+                                  Actualizar
+                                </Button>
+                                <Sheet>
+                                  <SheetTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setSelectedDoc(doc)}
+                                    >
+                                      <Eye className="w-4 h-4 mr-1" /> Ver
+                                    </Button>
+                                  </SheetTrigger>
+                                  <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
+                                    {selectedDoc && selectedDoc.id === doc.id && (
+                                      <DocumentoDetail doc={selectedDoc} />
+                                    )}
+                                  </SheetContent>
+                                </Sheet>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -416,6 +442,30 @@ export default function Documentos() {
           );
         })}
       </div>
+
+      <ActualizarDialog
+        doc={updateDoc}
+        onClose={() => setUpdateDoc(null)}
+        onSave={(updated, archivo, datos, nuevaVersion, autor, resumen) => {
+          updateDocumento(updated.id, {
+            version: nuevaVersion,
+            ultimaRevision: new Date(),
+            proximaRevision: addDays(new Date(), 365),
+            estado: "vigente",
+            historial: [
+              ...updated.historial,
+              {
+                version: nuevaVersion,
+                fecha: new Date(),
+                autor,
+                cambio: resumen,
+                datos,
+                archivo,
+              },
+            ],
+          });
+        }}
+      />
     </div>
   );
 }
@@ -520,7 +570,7 @@ function DocumentoDetail({ doc }: { doc: Documento }) {
           <div className="space-y-3">
             {doc.historial.map((h, i) => (
               <div key={i} className="text-sm border-l-2 border-muted pl-3 py-1">
-                <div className="flex items-baseline justify-between mb-0.5">
+                <div className="flex items-baseline justify-between mb-0.5 gap-2">
                   <span className="font-medium">{h.version}</span>
                   <span className="text-xs text-muted-foreground">
                     {formatDate(h.fecha)}
@@ -528,6 +578,19 @@ function DocumentoDetail({ doc }: { doc: Documento }) {
                 </div>
                 <p className="text-muted-foreground text-xs">{h.cambio}</p>
                 <p className="text-xs mt-1 italic">— {h.autor}</p>
+                {h.archivo && (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="h-6 px-0 text-xs"
+                    onClick={() => {
+                      const { titulo } = splitFolder(doc.nombre);
+                      downloadArchivo(`${titulo} ${h.version}`, h.archivo!);
+                    }}
+                  >
+                    <Download className="w-3 h-3 mr-1" /> Descargar archivo
+                  </Button>
+                )}
               </div>
             ))}
             {doc.historial.length === 0 && (
@@ -537,5 +600,245 @@ function DocumentoDetail({ doc }: { doc: Documento }) {
         </div>
       </div>
     </>
+  );
+}
+
+function ActualizarDialog({
+  doc,
+  onClose,
+  onSave,
+}: {
+  doc: Documento | null;
+  onClose: () => void;
+  onSave: (
+    doc: Documento,
+    archivo: string,
+    datos: Record<string, string>,
+    nuevaVersion: string,
+    autor: string,
+    resumen: string,
+  ) => void;
+}) {
+  const { toast } = useToast();
+  const [datos, setDatos] = useState<Record<string, string>>({});
+  const [autor, setAutor] = useState("");
+  const [resumen, setResumen] = useState("");
+  const [plantilla, setPlantilla] = useState<PlantillaDoc | null>(null);
+  const [docCtx, setDocCtx] = useState<Documento | null>(null);
+
+  // Reset state when a new doc is opened
+  if (doc && doc.id !== docCtx?.id) {
+    const p = getPlantillaForDoc(doc);
+    setPlantilla(p);
+    setDocCtx(doc);
+    setDatos(getInitialDatos(doc));
+    setAutor(doc.responsable);
+    setResumen("");
+  }
+  if (!doc && docCtx) {
+    setDocCtx(null);
+    setPlantilla(null);
+    setDatos({});
+    setAutor("");
+    setResumen("");
+  }
+
+  if (!doc || !plantilla) return null;
+
+  const { titulo, carpeta } = splitFolder(doc.nombre);
+  const nuevaVersion = bumpVersion(doc.version);
+
+  const setVal = (k: string, v: string) =>
+    setDatos((prev) => ({ ...prev, [k]: v }));
+
+  const handleSubmit = (download: boolean) => {
+    const faltantes = plantilla.campos
+      .filter((c) => c.obligatorio && !(datos[c.key] ?? "").toString().trim())
+      .map((c) => c.label);
+    if (faltantes.length > 0) {
+      toast({
+        title: "Faltan datos obligatorios",
+        description: faltantes.join(", "),
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!autor.trim()) {
+      toast({
+        title: "Indicá el autor",
+        description: "Necesitamos saber quién genera la nueva versión.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const fecha = new Date();
+    const archivo = renderArchivo(doc, plantilla, datos, nuevaVersion, fecha);
+    const cambio = resumen.trim() || `Actualización con plantilla "${plantilla.nombre}"`;
+    onSave(doc, archivo, datos, nuevaVersion, autor.trim(), cambio);
+    if (download) {
+      downloadArchivo(`${titulo} ${nuevaVersion}`, archivo);
+    }
+    toast({
+      title: `Versión ${nuevaVersion} guardada`,
+      description: download
+        ? "Se generó y descargó el archivo actualizado."
+        : "La nueva versión quedó registrada en el historial.",
+    });
+    onClose();
+  };
+
+  return (
+    <Dialog open={!!doc} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FilePlus2 className="w-5 h-5 text-emerald-600" />
+            Actualizar: {titulo}
+          </DialogTitle>
+          <DialogDescription>
+            Plantilla: <strong>{plantilla.nombre}</strong> · Versión actual{" "}
+            {doc.version} → <strong>{nuevaVersion}</strong>
+            {carpeta !== SIN_CARPETA && <> · Carpeta: {carpeta}</>}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-2">
+          {plantilla.campos.map((c) => (
+            <CampoInput
+              key={c.key}
+              campo={c}
+              value={datos[c.key] ?? ""}
+              onChange={(v) => setVal(c.key, v)}
+            />
+          ))}
+
+          <div className="border-t pt-4 space-y-3">
+            <div className="space-y-2">
+              <Label>Autor de la nueva versión</Label>
+              <Input
+                value={autor}
+                onChange={(e) => setAutor(e.target.value)}
+                placeholder="Tu nombre"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Resumen del cambio (para el historial)</Label>
+              <Input
+                value={resumen}
+                onChange={(e) => setResumen(e.target.value)}
+                placeholder={`Actualización con plantilla "${plantilla.nombre}"`}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap justify-end gap-2 pt-4 border-t mt-2">
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button variant="secondary" onClick={() => handleSubmit(false)}>
+            Guardar versión
+          </Button>
+          <Button onClick={() => handleSubmit(true)}>
+            <Download className="w-4 h-4 mr-2" />
+            Guardar y descargar
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CampoInput({
+  campo,
+  value,
+  onChange,
+}: {
+  campo: CampoTemplate;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const label = (
+    <Label className="flex items-center gap-1">
+      {campo.label}
+      {campo.obligatorio && <span className="text-rose-500">*</span>}
+    </Label>
+  );
+
+  if (campo.tipo === "textarea") {
+    return (
+      <div className="space-y-2">
+        {label}
+        <Textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={campo.placeholder}
+          rows={3}
+        />
+      </div>
+    );
+  }
+  if (campo.tipo === "select" && campo.opciones) {
+    return (
+      <div className="space-y-2">
+        {label}
+        <Select value={value} onValueChange={onChange}>
+          <SelectTrigger>
+            <SelectValue placeholder="Seleccionar..." />
+          </SelectTrigger>
+          <SelectContent>
+            {campo.opciones.map((o) => (
+              <SelectItem key={o} value={o}>
+                {o}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    );
+  }
+  if (campo.tipo === "rating") {
+    const current = parseInt(value, 10) || 0;
+    return (
+      <div className="space-y-2">
+        {label}
+        <div className="flex items-center gap-1.5">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => onChange(String(n))}
+              className="p-1 rounded hover:bg-muted transition-colors"
+              title={`${n} de 5`}
+            >
+              <Star
+                className={cn(
+                  "w-5 h-5",
+                  n <= current
+                    ? "text-amber-500 fill-amber-500"
+                    : "text-slate-300",
+                )}
+              />
+            </button>
+          ))}
+          {current > 0 && (
+            <span className="text-xs text-muted-foreground ml-2">
+              {current} / 5
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      {label}
+      <Input
+        type={campo.tipo === "number" ? "number" : campo.tipo === "date" ? "date" : "text"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={campo.placeholder}
+      />
+    </div>
   );
 }

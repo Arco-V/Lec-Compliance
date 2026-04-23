@@ -16,7 +16,7 @@ export interface Documento {
   estado: DocStatus;
   responsable: string;
   frecuencia: string;
-  historial: { version: string; fecha: Date; autor: string; cambio: string }[];
+  historial: { version: string; fecha: Date; autor: string; cambio: string; datos?: Record<string, string>; archivo?: string }[];
 }
 
 export interface Alerta {
